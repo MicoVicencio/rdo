@@ -9,14 +9,17 @@ DB_FILE = "thesis_repo/main/thesis_repository.db"
 SEAL_PATH = r"C:/Users/Mico/Desktop/rdo/thesis_repo/main/image.png"
 THESIS_FILES_DIR = "thesis_files"
 
-class ThesisSearchApp:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("Thesis Repository Search")
-        self.root.geometry("1200x800")
+class ThesisSearchApp(tk.Frame):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.parent = parent
+        self.pack(fill="both", expand=True)
+
+        self.parent.title("Thesis Repository Search")
+        self.parent.geometry("1200x800")
 
         # --- Top Frame (Seal + Search bar + Filters) ---
-        top_frame = tk.Frame(root, pady=10)
+        top_frame = tk.Frame(self.parent, pady=10)
         top_frame.pack(side=tk.TOP, fill=tk.X)
 
         # Seal Image
@@ -57,7 +60,7 @@ class ThesisSearchApp:
 
         # --- Treeview for Results ---
         columns = ("Title", "Course", "Year")
-        self.tree = ttk.Treeview(root, columns=columns, show="headings", height=20)
+        self.tree = ttk.Treeview(self.parent, columns=columns, show="headings", height=20)
         self.tree.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         style = ttk.Style()
@@ -134,7 +137,6 @@ class ThesisSearchApp:
                              values=(title, course, year),
                              tags=(tag,))
 
-
     def open_pdf(self, event):
         """Open the selected PDF file"""
         selected_item_id = self.tree.focus()
@@ -151,25 +153,16 @@ class ThesisSearchApp:
             file_path_from_db = result[0]
 
             # Determine the base directory of the 'thesis_repo'
-            # This extracts 'C:\Users\Mico\Desktop\rdo\thesis_repo'
             repo_root_dir = os.path.dirname(os.path.dirname(os.path.abspath(DB_FILE)))
-
-            # Construct the absolute path to the 'main' directory
             main_dir_path = os.path.join(repo_root_dir, 'main')
-
-            # Now, the absolute path to your base thesis files directory (within 'main')
             absolute_thesis_base_dir = os.path.join(main_dir_path, THESIS_FILES_DIR)
 
-            # Ensure file_path_from_db is relative to THESIS_FILES_DIR
-            # If your database stores paths like 'thesis_files/select course/...',
-            # you need to remove the 'thesis_files/' prefix.
             relative_path = file_path_from_db
             if file_path_from_db.startswith(THESIS_FILES_DIR + os.sep):
                 relative_path = file_path_from_db[len(THESIS_FILES_DIR + os.sep):]
-            elif file_path_from_db.startswith(THESIS_FILES_DIR + "/"): # Handle forward slashes if present
+            elif file_path_from_db.startswith(THESIS_FILES_DIR + "/"):
                 relative_path = file_path_from_db[len(THESIS_FILES_DIR + "/"):]
 
-            # Construct the final absolute path to the PDF
             abs_path = os.path.join(absolute_thesis_base_dir, relative_path)
 
             if os.path.exists(abs_path):
@@ -182,7 +175,6 @@ class ThesisSearchApp:
                     messagebox.showerror("Error", f"Could not open file:\n{e}")
             else:
                 messagebox.showerror("File Not Found", f"The file does not exist:\n{abs_path}")
-                #  - This is a comment, remove if you intend to add an actual image.
         else:
             messagebox.showerror("Error", "Could not retrieve file path from database.")
 
