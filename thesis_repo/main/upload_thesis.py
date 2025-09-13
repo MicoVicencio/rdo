@@ -9,13 +9,18 @@ import fitz  # PyMuPDF
 import re
 from keybert import KeyBERT
 
-# Initialize BERT model
+# Initialize BERT model for keyword extraction.
+# This model is loaded once to be used later.
 kw_model = KeyBERT()
 db_path = "thesis_repo/main/thesis_repository.db"
 
 
-# Initialize the database
+# Initialize the database and table.
 def init_db():
+    """
+    Creates the database file and the 'theses' table if they don't already exist.
+    This ensures the application has a consistent place to store data.
+    """
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
     conn = sqlite3.connect(db_path)
     c = conn.cursor()
@@ -37,6 +42,16 @@ def init_db():
 
 # Extract keywords using KeyBERT
 def extract_keywords(text, num_keywords=5):
+    """
+    Extracts relevant keywords from a given text using the KeyBERT model.
+
+    Args:
+        text (str): The input text to analyze.
+        num_keywords (int): The number of keywords to extract.
+
+    Returns:
+        str: A comma-separated string of the extracted keywords, or an empty string on failure.
+    """
     try:
         keywords = kw_model.extract_keywords(
             text,
@@ -50,6 +65,20 @@ def extract_keywords(text, num_keywords=5):
 
 
 def upload_file_wrapper(course_entry, title_entry, file_path_var, pdf_preview_canvas, authors_entry=None, year_entry=None, keyword_debug_label=None):
+    """
+    Opens a file dialog for the user to select a PDF.
+    On selection, it automatically extracts metadata (title, authors, year)
+    and a preview image from the PDF to populate the form fields.
+
+    Args:
+        course_entry (ttk.Combobox): Tkinter widget for the course.
+        title_entry (tk.Entry): Tkinter widget for the title.
+        file_path_var (tk.StringVar): Tkinter variable to store the file path.
+        pdf_preview_canvas (tk.Label): Tkinter widget to display the PDF preview.
+        authors_entry (tk.Entry, optional): Tkinter widget for authors.
+        year_entry (tk.Entry, optional): Tkinter widget for the year.
+        keyword_debug_label (tk.Label, optional): Tkinter widget to display keywords.
+    """
     file_path = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])
     if file_path:
         try:
@@ -57,15 +86,16 @@ def upload_file_wrapper(course_entry, title_entry, file_path_var, pdf_preview_ca
             pdf_name = os.path.splitext(os.path.basename(file_path))[0]
             safe_title = re.sub(r'[\\/*?:"<>|\r\n]', "", pdf_name).strip().upper()
 
-            # Read PDF text (first 3 pages)
+            # Read PDF text (first 3 pages) for metadata extraction
             doc = fitz.open(file_path)
             all_text = "\n".join([doc[i].get_text() for i in range(min(3, len(doc)))])
             doc.close()
 
-            # Extract author names
+            # Extract author names using a regular expression
             name_pattern = r'([A-Z][\wñÑáéíóúüÁÉÍÓÚÜ\-]*, [A-Z][a-zA-ZñÑáéíóúüÁÉÍÓÚÜ\-]+)'
             name_lines = re.findall(name_pattern, all_text)
 
+            # Filter out irrelevant names (e.g., location names)
             filtered_names = [name for name in name_lines if "Cainta" not in name and "Rizal" not in name]
             authors = ", ".join(filtered_names)
 
@@ -73,7 +103,7 @@ def upload_file_wrapper(course_entry, title_entry, file_path_var, pdf_preview_ca
             year_match = re.search(r'\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{4})\b', all_text)
             year = year_match.group(1) if year_match else ""
 
-            # Fill fields
+            # Fill the entry fields with the extracted metadata
             title_entry.delete(0, tk.END)
             title_entry.insert(0, safe_title)
 
@@ -85,12 +115,12 @@ def upload_file_wrapper(course_entry, title_entry, file_path_var, pdf_preview_ca
                 year_entry.delete(0, tk.END)
                 year_entry.insert(0, year)
 
-            # Generate keywords immediately
+            # Generate keywords from the title and update the keyword label
             if keyword_debug_label:
                 keywords = extract_keywords(safe_title)
                 keyword_debug_label.config(text=keywords)
 
-            # Set path and preview
+            # Set the file path and generate a preview of the PDF's first page
             file_path_var.set(file_path)
             preview_pdf_first_page(file_path, pdf_preview_canvas)
 
@@ -98,8 +128,15 @@ def upload_file_wrapper(course_entry, title_entry, file_path_var, pdf_preview_ca
             messagebox.showerror("File Error", f"Failed to process PDF:\n{e}")
 
 
-
 def preview_pdf_first_page(pdf_path, pdf_preview_canvas):
+    """
+    Generates an image preview of the first page of a PDF file
+    and displays it on a Tkinter canvas.
+
+    Args:
+        pdf_path (str): The file path of the PDF.
+        pdf_preview_canvas (tk.Label): The Tkinter widget to display the preview.
+    """
     try:
         doc = fitz.open(pdf_path)
         page = doc.load_page(0)
@@ -122,6 +159,20 @@ def preview_pdf_first_page(pdf_path, pdf_preview_canvas):
 # Save thesis to database
 def save_thesis(title_entry, authors_entry, course_entry, year_entry, file_path_var,
                 keyword_debug_label, root, pdf_preview_canvas):
+    """
+    Validates form data, saves the PDF file to a structured directory,
+    inserts the thesis metadata into the database, and clears the form.
+
+    Args:
+        title_entry (tk.Entry): Widget for the thesis title.
+        authors_entry (tk.Entry): Widget for the author names.
+        course_entry (ttk.Combobox): Widget for the course.
+        year_entry (tk.Entry): Widget for the year.
+        file_path_var (tk.StringVar): Variable holding the file path.
+        keyword_debug_label (tk.Label): Widget to display keywords.
+        root (tk.Tk): The root Tkinter window.
+        pdf_preview_canvas (tk.Label): The widget for the PDF preview.
+    """
     title = title_entry.get().strip()
     authors = authors_entry.get().strip()
     course = course_entry.get().strip()
@@ -132,27 +183,28 @@ def save_thesis(title_entry, authors_entry, course_entry, year_entry, file_path_
         messagebox.showerror("Error", "Please fill in all required fields and upload a PDF.")
         return
 
-    keywords = extract_keywords(title)  # ✅ only from title
+    # Extract keywords from the title before saving
+    keywords = extract_keywords(title)
     keyword_debug_label.config(text=keywords)
 
     try:
-        # ✅ Project directory (where this script is located)
-        project_dir = os.path.dirname(os.path.abspath(__file__))  
+        # Determine the project directory and the target directory for the file.
+        project_dir = os.path.dirname(os.path.abspath(__file__))
         thesis_base_dir = os.path.join(project_dir, "thesis_files")
 
-        # ✅ Use course as folder name (abreed, bscs, bsba, etc.)
+        # Create a subdirectory for the course if it doesn't exist.
         course_folder = os.path.join(thesis_base_dir, course.lower())
         os.makedirs(course_folder, exist_ok=True)
 
-        # ✅ Sanitize filename
+        # Sanitize the filename to prevent path issues.
         filename = os.path.basename(original_file_path)
         safe_filename = re.sub(r'[\\/*?:"<>|\r\n]', "_", filename)
         target_path = os.path.join(course_folder, safe_filename)
 
-        # ✅ Copy file into project’s thesis_files/<course>/
+        # Copy the PDF file to the new location.
         shutil.copy2(original_file_path, target_path)
 
-        # ✅ Save relative path (relative to project_dir)
+        # Get the relative path for database storage.
         relative_path = os.path.relpath(target_path, start=project_dir)
 
         # --- Insert into database ---
@@ -167,10 +219,10 @@ def save_thesis(title_entry, authors_entry, course_entry, year_entry, file_path_
 
         messagebox.showinfo("Success", "Thesis entry saved and file uploaded.")
 
-        # ✅ Clear fields after 3 sec
+        # Clear fields after 3 seconds for user feedback.
         root.after(3000, lambda: clear_fields(title_entry, authors_entry, course_entry,
-                                              year_entry, file_path_var, pdf_preview_canvas,
-                                              keyword_debug_label))
+                                             year_entry, file_path_var, pdf_preview_canvas,
+                                             keyword_debug_label))
         root.destroy()
 
     except Exception as e:
@@ -179,6 +231,18 @@ def save_thesis(title_entry, authors_entry, course_entry, year_entry, file_path_
 
 # Clear the form
 def clear_fields(title_entry, authors_entry, course_entry, year_entry, file_path_var, pdf_preview_canvas, keyword_debug_label):
+    """
+    Clears all input fields and the PDF preview to reset the form.
+
+    Args:
+        title_entry (tk.Entry): Widget for the thesis title.
+        authors_entry (tk.Entry): Widget for the author names.
+        course_entry (ttk.Combobox): Widget for the course.
+        year_entry (tk.Entry): Widget for the year.
+        file_path_var (tk.StringVar): Variable holding the file path.
+        pdf_preview_canvas (tk.Label): The widget for the PDF preview.
+        keyword_debug_label (tk.Label): Widget to display keywords.
+    """
     title_entry.delete(0, tk.END)
     authors_entry.delete(0, tk.END)
     course_entry.set("Select Course")
@@ -191,6 +255,9 @@ def clear_fields(title_entry, authors_entry, course_entry, year_entry, file_path
 
 # Main GUI
 def open_thesis_entry_form():
+    """
+    Creates and runs the main GUI for the thesis entry form.
+    """
     init_db()
     root = tk.Tk()
     root.title("Thesis Entry Form")
