@@ -1,7 +1,7 @@
 import sqlite3
 import os
 
-DB_FILE = r"C:/Users/Mico/Desktop/rdo/thesis_repo/main/thesis_repository.db"
+DB_FILE = "thesis_repository.db"
 
 def clear_database():
     if not os.path.exists(DB_FILE):
