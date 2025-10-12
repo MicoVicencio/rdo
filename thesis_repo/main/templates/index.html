@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Research Development Office - Search Thesis</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #FFFFFF;
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+      color: #2C3E50;
+    }
+
+    header {
+      background: linear-gradient(90deg, #85C7F2, #428CFF);
+      color: white;
+      padding: 20px 40px;
+      font-size: 24px;
+      font-weight: bold;
+      text-align: center;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+
+    .container {
+      max-width: 1300px;
+      margin: 40px auto;
+      background: #F9F9FC;
+      border-radius: 15px;
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+      padding: 40px;
+    }
+
+    h2.page-title {
+      text-align: center;
+      margin-bottom: 25px;
+      color: #2C3E50;
+      font-size: 28px;
+    }
+
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 20px;
+      justify-content: center;
+    }
+
+    input, select {
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+      min-width: 400px;
+    }
+
+    #active-filters {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .filter-chip {
+      display: inline-block;
+      background: #4CAF50;
+      color: white;
+      padding: 6px 14px;
+      border-radius: 25px;
+      margin: 4px;
+      font-size: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 15px;
+      table-layout: fixed;
+    }
+
+    th, td {
+      padding: 14px;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+      word-wrap: break-word;
+      cursor: pointer;
+    }
+
+    th {
+      background: linear-gradient(90deg, #85C7F2, #428CFF);
+      color: white;
+    }
+
+    .table-container {
+      max-height: 600px;
+      overflow-y: auto;
+      overflow-x: auto;
+      border-radius: 8px;
+      box-shadow: inset 0 2px 6px rgba(0,0,0,0.05);
+    }
+
+    /* --- Modal --- */
+    #detail-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(44,62,80,0.6);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      padding: 20px;
+    }
+  #modal-abstract-container {
+  max-height: 350px; /* height of scrollable area inside modal */
+  overflow-y: auto;  /* enable vertical scroll */
+  margin-top: 10px;
+  text-align: center;
+}
+
+#modal-abstract-container img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 10px auto;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+    #detail-modal.active {
+      display: flex;
+      opacity: 1;
+    }
+
+    .modal-card {
+  background: #ffffff;
+  border-radius: 20px;
+  max-width: 900px;
+  width: 100%;
+  height: 700px; /* Fixed height */
+  padding: 40px 40px;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.35);
+  text-align: left;
+  position: relative;
+  overflow: hidden; /* prevent modal from growing */
+}
+
+    .modal-card h3 {
+      margin-top: 0;
+      margin-bottom: 30px;
+      font-size: 28px;
+      color: #ffffff;
+      background: linear-gradient(90deg, #85C7F2, #428CFF);
+      padding: 25px 25px;
+      border-radius: 15px 15px 0 0;
+      word-wrap: break-word;
+      line-height: 1.3;
+    }
+
+    .modal-info {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .modal-info li {
+      display: flex;
+      align-items: flex-start;
+      margin-bottom: 16px;
+      font-size: 17px;
+      color: #2C3E50;
+      line-height: 1.5;
+    }
+
+    .modal-abstract {
+      margin-top: 20px;
+      text-align: justify;
+    }
+
+    .modal-abstract img {
+      width: 100%;
+      border-radius: 10px;
+      margin-top: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: #ef4444;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 42px;
+      height: 42px;
+      font-size: 20px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    @keyframes slideIn {
+      0% { transform: translateY(-30px); opacity: 0; }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <header>Research Development Office</header>
+
+  <div class="container">
+    <h2 class="page-title">📖 Search Research / Thesis</h2>
+
+    <div class="filters">
+      <input type="text" id="search-input" placeholder="Type title to search..." />
+      <select id="filter-course">
+        <option value="">All Courses</option>
+        {% for c in courses %}
+        <option value="{{ c }}">{{ c }}</option>
+        {% endfor %}
+      </select>
+      <select id="filter-year">
+        <option value="">All Years</option>
+        {% for y in years %}
+        <option value="{{ y }}">{{ y }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div id="active-filters"></div>
+
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Course</th>
+            <th>Year</th>
+            <th>Date Uploaded</th>
+          </tr>
+        </thead>
+        <tbody id="result-body">
+          <tr>
+            <td colspan="4" style="text-align:center;color:gray;padding:15px;">Loading data...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+<!-- Detail Modal -->
+<div id="detail-modal">
+  <div class="modal-card">
+    <button class="close-btn" id="close-modal">×</button>
+    <h3 id="modal-title"></h3>
+
+    <ul class="modal-info">
+      <li>👨‍💼 <strong>Authors:</strong> <span id="modal-authors"></span></li>
+      <li>📚 <strong>Course:</strong> <span id="modal-course"></span></li>
+      <li>📅 <strong>Year:</strong> <span id="modal-year"></span></li>
+      <li>🔑 <strong>Keywords:</strong> <span id="modal-keywords"></span></li>
+    </ul>
+
+    <div class="modal-abstract">
+      <p><strong>🧾 Abstract:</strong></p>
+      <div id="modal-abstract-container">
+        <!-- JS will insert <img> tags here -->
+      </div>
+    </div>
+  </div>
+</div>
+
+  <script src="{{ url_for('static', filename='search.js') }}"></script>
+</body>
+</html>

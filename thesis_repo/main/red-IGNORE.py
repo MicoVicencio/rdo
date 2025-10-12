@@ -3,7 +3,7 @@ from tkinter import ttk
 import sqlite3
 
 def fetch_theses():
-    conn = sqlite3.connect("thesis_repo/main/thesis_repository.db")
+    conn = sqlite3.connect("thesis_repository.db")
     c = conn.cursor()
     c.execute('''
         SELECT thesis_id, title, authors, course, year, keywords, file_path, date_uploaded 
