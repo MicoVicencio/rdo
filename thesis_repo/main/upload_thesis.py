@@ -8,6 +8,12 @@ from PIL import Image, ImageTk
 import fitz  # PyMuPDF
 import re
 from keybert import KeyBERT
+from PyPDF2 import PdfReader, PdfWriter
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import letter
+from reportlab.lib.utils import ImageReader
+import io
+
 
 # Initialize BERT model for keyword extraction.
 kw_model = KeyBERT()
@@ -138,6 +144,71 @@ def preview_pdf_first_page(pdf_path, pdf_preview_canvas):
 
 def save_thesis(title_entry, authors_entry, course_entry, year_entry, file_path_var,
                 keyword_debug_label, root, pdf_preview_canvas, on_success=None):
+    """
+    Saves the thesis info to the database and applies watermark to the uploaded PDF.
+    """
+    import shutil
+    import os
+    import re
+    import sqlite3
+    from tkinter import messagebox
+
+    from PyPDF2 import PdfReader, PdfWriter
+    from reportlab.pdfgen import canvas
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.utils import ImageReader
+    import io
+
+    # --- Function to add watermark ---
+    def add_watermark(input_pdf_path, output_pdf_path, watermark_text="CCC RESEARCH PROPERTY", logo_path="image.png"):
+        packet = io.BytesIO()
+        can = canvas.Canvas(packet, pagesize=letter)
+        page_width, page_height = letter
+
+        # Text watermark
+        font_size = 30
+        can.setFont("Helvetica-Bold", font_size)
+        can.setFillColorRGB(0.6, 0.6, 0.6)
+        text_width = can.stringWidth(watermark_text, "Helvetica-Bold", font_size)
+        x_text = (page_width - text_width) / 2
+        y_text = page_height / 2
+        can.saveState()
+        can.translate(x_text, y_text)
+        can.rotate(45)
+        can.setFillAlpha(0.3)
+        can.drawString(0, 0, watermark_text)
+        can.restoreState()
+
+        # Logo watermark
+        try:
+            logo_width = 100
+            logo_height = 100
+            x_logo = (page_width - logo_width) / 2
+            y_logo = (page_height - logo_height) / 2
+            can.saveState()
+            can.setFillAlpha(0.2)
+            can.drawImage(ImageReader(logo_path), x_logo, y_logo, width=logo_width, height=logo_height, mask='auto')
+            can.restoreState()
+        except Exception as e:
+            print(f"Logo watermark failed: {e}")
+
+        can.save()
+        packet.seek(0)
+
+        watermark_pdf = PdfReader(packet)
+        watermark_page = watermark_pdf.pages[0]
+
+        original_pdf = PdfReader(input_pdf_path)
+        output_pdf = PdfWriter()
+
+        for page in original_pdf.pages:
+            page.merge_page(watermark_page)
+            output_pdf.add_page(page)
+
+        with open(output_pdf_path, "wb") as f:
+            output_pdf.write(f)
+
+    # --- Get values ---
     title = title_entry.get().strip()
     authors = authors_entry.get().strip()
     course = course_entry.get().strip()
@@ -148,7 +219,6 @@ def save_thesis(title_entry, authors_entry, course_entry, year_entry, file_path_
         messagebox.showerror("Error", "Please fill in all required fields and upload a PDF.")
         return
 
-    # Use already extracted keywords
     keywords = keyword_debug_label.cget("text")
 
     try:
@@ -162,9 +232,20 @@ def save_thesis(title_entry, authors_entry, course_entry, year_entry, file_path_
         filename = os.path.basename(original_file_path)
         safe_filename = re.sub(r'[\\/*?:"<>|\r\n]', "_", filename)
         target_path = os.path.join(course_folder, safe_filename)
+
+        # Copy file first
         shutil.copy2(original_file_path, target_path)
         relative_path = os.path.relpath(target_path, start=project_dir)
 
+        # Apply watermark
+        try:
+            watermark_path = os.path.join(project_dir, "image.png")  # make sure your logo is here
+            add_watermark(target_path, target_path, watermark_text="CCC RESEARCH PROPERTY", logo_path=watermark_path)
+        except Exception as e:
+            print("Watermarking failed:", e)
+
+        # --- Save to database ---
+        db_path = os.path.join(project_dir, "thesis_repository.db")
         conn = sqlite3.connect(db_path)
         c = conn.cursor()
         c.execute('''
@@ -174,7 +255,7 @@ def save_thesis(title_entry, authors_entry, course_entry, year_entry, file_path_
         conn.commit()
         conn.close()
 
-        messagebox.showinfo("Success", "Thesis entry saved and file uploaded successfully!")
+        messagebox.showinfo("Success", "Thesis entry saved and watermarked PDF uploaded successfully!")
 
         if on_success:
             try:
