@@ -3,6 +3,8 @@ from tkinter import ttk, messagebox
 from upload_thesis import open_thesis_entry_form
 from search import ThesisSearchApp
 import sqlite3
+from update_thesis import UpdateThesisApp
+from delete import open_delete_management_ui
 
 
 class Repo:
@@ -132,9 +134,9 @@ class Repo:
 
         # Buttons with more vertical space
         styled_btn(button_frame, "➕ Create a Record", "#ffcc80", lambda: self.security(1)).pack(pady=15, ipadx=5, ipady=5)
-        styled_btn(button_frame, "🔍 Search Research/Thesis", "#ffd180", self.search_thesis).pack(pady=15, ipadx=5, ipady=5)
-        styled_btn(button_frame, "✏️ Update Research/Thesis", "#ffab91", lambda: self.security(3)).pack(pady=15, ipadx=5, ipady=5)
-        styled_btn(button_frame, "🗑️ Delete Research/Thesis", "#ef9a9a", lambda: self.security(4)).pack(pady=15, ipadx=5, ipady=5)
+        styled_btn(button_frame, "🔍 Search Thesis", "#ffd180", self.search_thesis).pack(pady=15, ipadx=5, ipady=5)
+        styled_btn(button_frame, "✏️ Update Thesis", "#ffab91", lambda: self.security(3)).pack(pady=15, ipadx=5, ipady=5)
+        styled_btn(button_frame, "🗑️ Delete & Export Thesis", "#ef9a9a", lambda: self.security(4)).pack(pady=15, ipady=5)
 
 
         self.root.mainloop()
@@ -172,7 +174,7 @@ class Repo:
             if step == 1:
                 self.upload_thesis()
             elif step == 3:
-                self.update_thesis()
+                UpdateThesisApp(self.root)
             elif step == 4:
                 self.delete_thesis()
         else:
@@ -218,11 +220,9 @@ class Repo:
         top = tk.Toplevel(self.root)
         ThesisSearchApp(top)
 
-    def update_thesis(self):
-        messagebox.showinfo("Action Required", "Update functionality is not yet implemented.")
 
     def delete_thesis(self):
-        messagebox.showinfo("Action Required", "Delete functionality is not yet implemented.")
+        open_delete_management_ui(on_refresh = self.refresh_recent_entries)
 
     def refresh_recent_entries(self):
         for item in self.tree.get_children():

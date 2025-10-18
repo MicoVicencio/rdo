@@ -91,8 +91,31 @@ def upload_file_wrapper(course_entry, title_entry, file_path_var, pdf_preview_ca
             year = year_match.group(1) if year_match else ""
 
             # --- Abstract for keyword extraction: first + second page ---
-            num_pages_for_keywords = min(2, len(doc))
-            abstract_text = "\n".join([doc[i].get_text() for i in range(num_pages_for_keywords)])
+                    # --- Abstract for keyword extraction: find the page containing 'Abstract'
+                            # --- Abstract for keyword extraction: find the page containing 'Abstract'
+            abstract_page_index = None
+            for i in range(len(doc)):
+                page_text = doc[i].get_text().strip()
+                if page_text and re.search(r'\babstract\b', page_text, re.IGNORECASE):
+                    abstract_page_index = i
+                    break
+
+                # Get text for keywords
+            if abstract_page_index is not None:
+                pages_to_extract = [abstract_page_index]
+                if abstract_page_index + 1 < len(doc):
+                    pages_to_extract.append(abstract_page_index + 1)
+                abstract_text = "\n".join([doc[i].get_text().strip() for i in pages_to_extract if doc[i].get_text().strip()])
+            else:
+                    # fallback: first two non-empty pages
+                abstract_text = ""
+                for i in range(len(doc)):
+                    page_text = doc[i].get_text().strip()
+                    if page_text:
+                        abstract_text += page_text + "\n"
+                    if abstract_text.count("\n") >= 2:  # approx 2 pages of text
+                        break
+
 
             doc.close()
 
