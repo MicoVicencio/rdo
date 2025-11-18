@@ -180,8 +180,9 @@ class ThesisSearchApp(tk.Frame):
         params = []
 
         if search_text:
-            query += " AND (title LIKE ? OR keywords LIKE ?)"
-            params.extend([f"%{search_text}%", f"%{search_text}%"])
+            query += " AND (title LIKE ? OR keywords LIKE ? OR authors LIKE ?)"
+            like = f"%{search_text}%"
+            params.extend([like, like, like])
 
         if course != "All":
             query += " AND course=?"
@@ -197,15 +198,20 @@ class ThesisSearchApp(tk.Frame):
         results = cur.fetchall()
         conn.close()
 
+        # clear previous rows
         for row in self.tree.get_children():
             self.tree.delete(row)
 
+        # insert new filtered rows
         for index, row in enumerate(results):
             thesis_id, title, course, year, keywords, file_path, date_uploaded = row
             tag = "evenrow" if index % 2 == 0 else "oddrow"
-            self.tree.insert("", tk.END, iid=thesis_id,
-                             values=(title, course, year),
-                             tags=(tag,))
+            self.tree.insert(
+                "", tk.END, iid=thesis_id,
+                values=(title, course, year),
+                tags=(tag,)
+            )
+
 
     def open_pdf(self, event):
         selected_item_id = self.tree.focus()
