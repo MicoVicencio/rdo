@@ -124,8 +124,9 @@ def api_search():
     params = []
 
     if query:
-        sql += " AND LOWER(title) LIKE ?"
+        sql += " AND (LOWER(title) LIKE ? OR LOWER(authors) LIKE ?)"
         params.append(f"%{query}%")
+        params.append(f"%{query}%")   # second one for authors
 
     if year:
         sql += " AND CAST(year AS TEXT) = ?"
